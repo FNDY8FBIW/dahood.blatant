@@ -1,0 +1,26 @@
+-- luavm.lua
+-- Pure-Lua compiler that spits out a Roblox-usable chunk
+-- Host at: https://raw.githubusercontent.com/YOUR_USERNAME/da-hood-undefeated/main/luavm.lua
+local LuauVM = {}
+
+local function compile(source)
+    -- ultra-minimal: we just wrap the source in a function and return it
+    local chunk, err = loadstring(source)
+    if not chunk then
+        error("LuauVM compile error: "..tostring(err), 2)
+    end
+    return chunk
+end
+
+function LuauVM.run(source, env)
+    env = env or getgenv()
+    local chunk = compile(source)
+    setfenv(chunk, env)
+    return chunk()
+end
+
+function LuauVM.compile(source)
+    return compile(source)
+end
+
+return LuauVM
