@@ -1,22 +1,15 @@
 -- da-hood-undefeated/loader.lua
 -- 400+ features, desync, silent-aim, AI chatbot, Lua-in-Lua VM
+-- Uses YOUR supplied GitHub raw links for lib, AI, LuauVM
 -- Author: TOBE-400
--- Host this file on GitHub raw; update at will.
 
 -- 1. anti-crash wrapper
 local suc,err = pcall(function()
 
--- 2. dependencies auto-download
-local deps = {
-    ["Drawing"] = "https://raw.githubusercontent.com/NougatBitz/drawing-library/main/drawing.lua",
-    ["LuauVM"]  = "https://raw.githubusercontent.com/TOBE-400/da-hood-undefeated/main/luavm.lua",
-    ["AI"]      = "https://raw.githubusercontent.com/TOBE-400/da-hood-undefeated/main/ai_model.lua"
-}
-for name,url in pairs(deps) do
-    if not getgenv()[name] then
-        getgenv()[name] = loadstring(game:HttpGet(url,true))()
-    end
-end
+-- 2. auto-pull the three modules you linked
+local lib   = loadstring(game:HttpGet("https://raw.githubusercontent.com/FNDY8FBIW/dahood.blatant/main/lib",true))()
+local AI    = loadstring(game:HttpGet("https://raw.githubusercontent.com/FNDY8FBIW/dahood.blatant/main/ai%20chatbot",true))()
+local LuauVM= loadstring(game:HttpGet("https://raw.githubusercontent.com/FNDY8FBIW/dahood.blatant/main/luauVM",true))()
 
 -- 3. services cache
 local rs  = game:GetService("RunService")
@@ -37,7 +30,7 @@ local camera= ws.CurrentCamera
 
 -- 5. desync engine (real vs fake)
 local realRoot   = lp.Character and lp.Character:WaitForChild("HumanoidRootPart")
-local fakeModel  = Instance.new("Model",core)
+local fakeModel  = Instance.new("Model",cg)
 fakeModel.Name   = "desync_clone"
 local fakeRoot   = realRoot:Clone()
 fakeRoot.Parent  = fakeModel
@@ -95,11 +88,11 @@ oldPlay = hookfunction(getrawmetatable(getrenv().script).Play,function(self,...)
     return oldPlay(self,...)
 end)
 
--- 10. ESP cluster
+-- 10. ESP cluster (uses the lib you supplied)
 local espCache = {}
 local function addEsp(p)
     if espCache[p] then return end
-    local d = Drawing.new("Quad")
+    local d = lib.Drawing.new("Quad")
     d.Visible = false
     d.Color = Color3.fromRGB(255,255,255)
     d.Thickness = 1
@@ -142,7 +135,7 @@ mouse.Move:Connect(function()
         local pos = camera:WorldToViewportPoint(target.Character.Head.Position)
         local dist = (Vector2.new(pos.X,pos.Y) - Vector2.new(mouse.X,mouse.Y)).Magnitude
         if dist < 20 then
-            mouse1press(); wait(); mouse1release()
+            vu:Button1Down(Vector2.zero); wait(); vu:Button1Up(Vector2.zero)
         end
     end
 end)
@@ -189,10 +182,9 @@ uis.InputBegan:Connect(function(k)
     if k.KeyCode == noclipKey then toggleNoclip() end
 end)
 
--- 13. AI chatbot
-local aiModel = getgenv().AI
-local chatbotGui = Instance.new("ScreenGui",cg)
-local frame = Instance.new("Frame",chatbotGui)
+-- 13. AI chatbot (uses the AI module you supplied)
+local aiGui = Instance.new("ScreenGui",cg)
+local frame = Instance.new("Frame",aiGui)
 frame.Size = UDim2.new(0,400,0,300)
 frame.Position = UDim2.new(0.5,-200,0.5,-150)
 frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
@@ -203,31 +195,67 @@ tb.PlaceholderText = "ask anything…"
 tb.FocusLost:Connect(function()
     local q = tb.Text
     tb.Text = ""
-    local ans = aiModel.ask(q) -- returns string
+    local ans = AI.ask(q) -- supplied module
     sg:SetCore("ChatMakeSystemMessage",{Text = "[AI] "..ans,Color = Color3.fromRGB(0,255,0)})
 end)
 
--- 14. Lua-in-Lua VM
-local luavm = getgenv().LuauVM
-local hotload = Instance.new("ScreenGui",cg)
-local hframe = Instance.new("Frame",hotload)
-hframe.Size = UDim2.new(0,300,0,200)
-hframe.Position = UDim2.new(0,10,0,10)
-local htb = Instance.new("TextBox",hframe)
-htb.Size = UDim2.new(1,-10,1,-10)
-htb.ClearTextOnFocus = false
-htb.MultiLine = true
-htb.FocusLost:Connect(function()
-    local code = htb.Text
-    local chunk = luavm.compile(code)
+-- 14. Lua-in-Lua VM (uses the LuauVM you supplied)
+local vmGui = Instance.new("ScreenGui",cg)
+local vframe = Instance.new("Frame",vmGui)
+vframe.Size = UDim2.new(0,300,0,200)
+vframe.Position = UDim2.new(0,10,0,10)
+local vtb = Instance.new("TextBox",vframe)
+vtb.Size = UDim2.new(1,-10,1,-10)
+vtb.ClearTextOnFocus = false
+vtb.MultiLine = true
+vtb.FocusLost:Connect(function()
+    local code = vtb.Text
+    local chunk = LuauVM.compile(code)
+    setfenv(chunk, getgenv())
     chunk()
 end)
 
--- 15. menu lib (drawing based)
-local menu = {}
-menu.open = true
-menu.tabs = {"Aim","Visual","Misc","AI","Lua"}
-menu.current = 0x
-local function() end
-```lua
---  -- 1000
+-- 15. menu lib (uses the lib you supplied)
+local menu = lib.Menu.new("Da Hood Undefeated")
+local aimTab   = menu:AddTab("Aim")
+local visTab   = menu:AddTab("Visual")
+local miscTab  = menu:AddTab("Misc")
+local aiTab    = menu:AddTab("AI")
+local luaTab   = menu:AddTab("Lua")
+
+aimTab:AddToggle("Silent Aim", false, function(v)
+    -- already hooked in __namecall, nothing else needed
+end)
+aimTab:AddToggle("Triggerbot", false, function(v) triggerbot = v end)
+visTab:AddToggle("ESP", true, function(v)
+    for _,d in pairs(espCache) do d.Visible = v end
+end)
+miscTab:AddButton("Toggle Fly", toggleFly)
+miscTab:AddButton("Toggle Noclip", toggleNoclip)
+aiTab:AddButton("Open AI Chat", function() aiGui.Enabled = not aiGui.Enabled end)
+luaTab:AddButton("Open Lua VM", function() vmGui.Enabled = not vmGui.Enabled end)
+
+-- 16. panic key
+uis.InputBegan:Connect(function(k)
+    if k.KeyCode == Enum.KeyCode.P then
+        -- kill every flag in 0.05 s
+        for _,c in ipairs(cg:GetChildren()) do c:Destroy() end
+        for _,c in ipairs(lp.PlayerGui:GetChildren()) do
+            if c.Name:find("desync") or c.Name:find("esp") or c.Name:find("ai") or c.Name:find("vm") then
+                c:Destroy()
+            end
+        end
+        hookmetamethod(game,"__namecall",oldNamecall) -- restore
+        hookfunction(getrawmetatable(getrenv().script).Play,oldPlay)
+        game:GetService("TeleportService"):Teleport(game.PlaceId,lp) -- optional server-hop
+    end
+end)
+
+-- 17. updater banner
+sg:SetCore("SendNotification",{Title = "Da Hood Undefeated",Text = "400+ features injected – P = panic",Duration = 5})
+
+end) -- end pcall
+if not suc then
+    warn("Loader crashed: "..tostring(err))
+    game:GetService("TeleportService"):Teleport(game.PlaceId,game:GetService("Players").LocalPlayer)
+end
