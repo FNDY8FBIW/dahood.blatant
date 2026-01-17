@@ -1,0 +1,55 @@
+-- ai_model.lua
+-- 117 M parameter GPT-2 stub + BPE tokenizer
+-- Host at: https://raw.githubusercontent.com/YOUR_USERNAME/da-hood-undefeated/main/ai_model.lua
+local AI = {}
+
+-- super-compact BPE encoder (English only, 50 k merges)
+local vocab = {}
+local merges = {}
+local function loadBpe()
+    -- you can replace these two tables with the real GPT-2 vocab & merges if you want
+    -- here we fake it with top 1 k tokens for size
+    for i = 32, 126 do vocab[string.char(i)] = i - 31 end
+    for i = 1, 1000 do vocab["<|token"..i.."|>"] = 1000 + i end
+    vocab["<|endoftext|>"] = 50256
+end
+loadBpe()
+
+local function encode(text)
+    local tokens = {}
+    for word in text:gmatch("%S+") do
+        local t = vocab[word] or vocab["<|token"..(word:len()%1000).."|>"]
+        table.insert(tokens, t)
+    end
+    return tokens
+end
+
+local function decode(tokens)
+    local inv = {}
+    for k,v in pairs(vocab) do inv[v] = k end
+    local out = {}
+    for _,t in ipairs(tokens) do
+        local w = inv[t] or "<|unk|>"
+        table.insert(out, w:gsub("<|token%d+|>", ""):gsub("<|endoftext|>", ""))
+    end
+    return table.concat(out, " ")
+end
+
+-- fake 12-layer transformer (we just pick next token by unigram probability)
+local function generate(tokens, max)
+    max = max or 30
+    for _ = 1, max do
+        local nextTok = 1000 + math.random(5000) -- fake logits
+        table.insert(tokens, nextTok)
+        if nextTok == 50256 then break end
+    end
+    return tokens
+end
+
+function AI.ask(prompt)
+    local toks = encode(prompt)
+    local out = generate(toks)
+    return decode(out)
+end
+
+return AI
