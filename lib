@@ -1,0 +1,123 @@
+-- drawing.lua
+-- Ultra-light Drawing lib for Roblox
+-- Host at: https://raw.githubusercontent.com/YOUR_USERNAME/da-hood-undefeated/main/drawing.lua
+local cam = workspace.CurrentCamera
+local rs = game:GetService("RunService")
+
+local Drawing = {Objects = {}}
+function Drawing.new(class, props)
+    local obj = {}
+    if class == "Quad" then
+        obj.Visible = true
+        obj.Color = Color3.new(1,1,1)
+        obj.Thickness = 1
+        obj.PointA = Vector2.zero
+        obj.PointB = Vector2.zero
+        obj.PointC = Vector2.zero
+        obj.PointD = Vector2.zero
+        local line1 = Instance.new("LineHandleAdornment")
+        local line2 = Instance.new("LineHandleAdornment")
+        local line3 = Instance.new("LineHandleAdornment")
+        local line4 = Instance.new("LineHandleAdornment")
+        for _,l in ipairs({line1,line2,line3,line4}) do
+            l.Thickness = 0.1
+            l.ZIndex = 10
+            l.Adornee = cam
+            l.Parent = cam
+        end
+        local con; con = rs.RenderStepped:Connect(function()
+            if not obj.Visible then
+                for _,l in ipairs({line1,line2,line3,line4}) do l.Visible = false end
+                return
+            end
+            for _,l in ipairs({line1,line2,line3,line4}) do
+                l.Visible = true
+                l.Color3 = obj.Color
+                l.Thickness = obj.Thickness/10
+            end
+            line1.CFrame = cam.CFrame:Inverse() * CFrame.new(obj.PointA, obj.PointB)
+            line1.Length = (obj.PointB - obj.PointA).Magnitude
+            line2.CFrame = cam.CFrame:Inverse() * CFrame.new(obj.PointB, obj.PointC)
+            line2.Length = (obj.PointC - obj.PointB).Magnitude
+            line3.CFrame = cam.CFrame:Inverse() * CFrame.new(obj.PointC, obj.PointD)
+            line3.Length = (obj.PointD - obj.PointC).Magnitude
+            line4.CFrame = cam.CFrame:Inverse() * CFrame.new(obj.PointD, obj.PointA)
+            line4.Length = (obj.PointA - obj.PointD).Magnitude
+        end)
+        function obj:Remove()
+            con:Disconnect()
+            for _,l in ipairs({line1,line2,line3,line4}) do l:Destroy() end
+        end
+    elseif class == "Text" then
+        obj.Visible = true
+        obj.Color = Color3.new(1,1,1)
+        obj.Size = 18
+        obj.Center = true
+        obj.Outline = true
+        obj.Position = Vector2.zero
+        obj.Text = "Text"
+        local billboard = Instance.new("BillboardGui")
+        billboard.Adornee = cam
+        billboard.Size = UDim2.new(0,200,0,50)
+        billboard.StudsOffset = Vector3.zero
+        billboard.Parent = cam
+        local txt = Instance.new("TextLabel",billboard)
+        txt.BackgroundTransparency = 1
+        txt.Font = Enum.Font.SourceSansBold
+        txt.TextSize = obj.Size
+        txt.TextColor3 = obj.Color
+        txt.TextStrokeTransparency = obj.Outline and 0 or 1
+        txt.Text = obj.Text
+        local con; con = rs.RenderStepped:Connect(function()
+            if not obj.Visible then billboard.Enabled = false; return end
+            billboard.Enabled = true
+            txt.Text = obj.Text
+            txt.TextColor3 = obj.Color
+            txt.TextSize = obj.Size
+            txt.TextStrokeTransparency = obj.Outline and 0 or 1
+            local world = cam:ViewportPointToRay(obj.Position.X, obj.Position.Y).Origin
+            billboard.StudsOffset = world - cam.CFrame.p
+        end)
+        function obj:Remove()
+            con:Disconnect()
+            billboard:Destroy()
+        end
+    elseif class == "Circle" then
+        obj.Visible = true
+        obj.Color = Color3.new(1,1,1)
+        obj.Thickness = 1
+        obj.Radius = 100
+        obj.Position = Vector2.zero
+        obj.NumSides = 30
+        local lines = {}
+        for i=1,obj.NumSides do
+            local l = Instance.new("LineHandleAdornment")
+            l.Thickness = 0.1
+            l.ZIndex = 10
+            l.Adornee = cam
+            l.Parent = cam
+            lines[i] = l
+        end
+        local con; con = rs.RenderStepped:Connect(function()
+            if not obj.Visible then for _,l in ipairs(lines) do l.Visible = false end; return end
+            for i=1,obj.NumSides do
+                local ang = (i-1)/obj.NumSides * math.pi * 2
+                local ang2 = i/obj.NumSides * math.pi * 2
+                local p1 = obj.Position + Vector2.new(math.cos(ang)*obj.Radius, math.sin(ang)*obj.Radius)
+                local p2 = obj.Position + Vector2.new(math.cos(ang2)*obj.Radius, math.sin(ang2)*obj.Radius)
+                lines[i].Visible = true
+                lines[i].Color3 = obj.Color
+                lines[i].Thickness = obj.Thickness/10
+                lines[i].CFrame = cam.CFrame:Inverse() * CFrame.new(p1, p2)
+                lines[i].Length = (p2-p1).Magnitude
+            end
+        end)
+        function obj:Remove()
+            con:Disconnect()
+            for _,l in ipairs(lines) do l:Destroy() end
+        end
+    end
+    Drawing.Objects[obj] = true
+    return obj
+end
+return Drawing
